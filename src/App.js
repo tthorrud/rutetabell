@@ -73,10 +73,6 @@ function App() {
         });
   };
 
-  const sleep = async () => {
-    return await new Promise(r => setTimeout(r, 11000));
-  };
-
   const destinationRow = (destinationData) => {
     return (
         <tr key={`${destinationData.destinationDisplay.frontText}-${destinationData.aimedArrivalTime}`}>

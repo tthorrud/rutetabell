@@ -32,13 +32,6 @@ th {
   padding: 0 30px 10px 30px;
 }
 
-.rute-tabell {
-  padding: 0;
-  th {
-    padding: 0 30px 10px 30px;
-  }
-}
-
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);
