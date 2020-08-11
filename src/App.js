@@ -1,5 +1,4 @@
 import React, {useEffect, useState} from 'react';
-import logo from './logo.svg';
 import './App.css';
 import {format, differenceInMinutes} from 'date-fns'
 
@@ -8,37 +7,42 @@ function App() {
   const [newestRutetider, setNewestRutetider] = useState(null);
   const [fetchQueue, updateFetchQueue] = useState([]);
 
-  console.log('state', newestRutetider);
-  console.log('queue', fetchQueue);
-
+  //Hvis køen er tom skal ny kø være ett nytt request, mens hvis køen allerede har et eller flere requests, skal den
+  //nye køen bestå av det første requestet i nåværende kø pluss et nytt request.
   const putOnQueue = () => {
     if (fetchQueue.length < 1) {
-      console.log("skal skje noe her")
       updateFetchQueue([createRequest]);
     } else if (fetchQueue.length >= 1) {
-      console.log('nå har vi kø', fetchQueue);
       const copyQueue = fetchQueue;
       updateFetchQueue([copyQueue.shift(), createRequest]);
     }
   };
 
+  //Kjører hver gang køen har blitt oppdatert. Dersom et kall har fått respons og det ligger et ventende kall i køen,
+  // vil køen ha blitt redusert fra 2 til 1 element - og kallet som er igjen i køen skal bli kjørt.
   useEffect(() => {
     if (fetchQueue.length === 1 ) {
       fetchQueue[0]();
     }
   }, [fetchQueue]);
 
+  //Setter et kall i køen ved første render og legger deretter til et kall hvert 5. sekund
   useEffect(() => {
-    console.log("KUN SKJE 1 GANG")
     putOnQueue();
     const interval = setInterval(() => {
-      console.log("KJorer hvert femte sekund");
       putOnQueue();
-    }, 10000);
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
+  const removeExecutedAPIRequest = () => {
+    const oldQueue = [...fetchQueue];
+    oldQueue.shift();
+    updateFetchQueue(oldQueue);
+  };
 
+  //Metode som eksekverer et API kall og deretter fjerner første kall i køen. Hvis kallet returnerer feil ryddes fortsatt
+  //køen, og resultat fra forrige vellykket kall blir stående i rutetabellen.
   const createRequest = () => {
     fetch("https://api.entur.io/journey-planner/v2/graphql", {
       method: "POST",
@@ -66,11 +70,10 @@ function App() {
     })
         .then(res => res.json())
         .then(res => {
-            const oldQueue = [...fetchQueue];
-            oldQueue.shift();
-            updateFetchQueue(oldQueue);
+            removeExecutedAPIRequest();
             return setNewestRutetider(res.data)
-        });
+        })
+        .catch(error => removeExecutedAPIRequest());
   };
 
   const destinationRow = (destinationData) => {
@@ -84,22 +87,24 @@ function App() {
     )
   };
 
+  const haveRutetider = () => {
+    return newestRutetider && newestRutetider.stopPlace && newestRutetider.stopPlace.estimatedCalls;
+  };
+
   return (
     <div className="App">
       <header className="App-header">
-        <table className="rute-tabell">
+        <table>
           <thead>
           <tr>
             <th>Destinasjon</th>
             <th>Avgang</th>
-            <th>Forventet ankomst</th>
+            <th>Forventet avgang</th>
             <th>Forsinket</th>
           </tr>
           </thead>
           <tbody>
-            { newestRutetider && newestRutetider.stopPlace && newestRutetider.stopPlace.estimatedCalls &&
-            newestRutetider.stopPlace.estimatedCalls.map(r => destinationRow(r))
-            }
+            { haveRutetider() && newestRutetider.stopPlace.estimatedCalls.map(r => destinationRow(r)) }
           </tbody>
         </table>
       </header>
